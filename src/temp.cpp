@@ -39,16 +39,3 @@ NumericVector absoluteDiffAverageWeightEventAttributeCpp(
       } // closes i-loop
     return Rcpp::wrap(result);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
