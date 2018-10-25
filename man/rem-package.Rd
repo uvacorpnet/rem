@@ -11,14 +11,18 @@
 \tabular{ll}{
 Package: \tab rem\cr
 Type: \tab Package\cr
-Version: \tab 1.2.8\cr
-Date: \tab 2017-06-23\cr
+Version: \tab 1.3.1\cr
+Date: \tab 2018-10-24\cr
 }
 }
 \author{
-Laurence Brandenberger \email{laurence.brandenberger@eawag.ch}
+Laurence Brandenberger \email{lbrandenberger@ethz.ch}
 }
 \references{
-Lerner, J., Bussmann, M., Snijders, T. A., & Brandes, U. (2013). Modeling frequency and type of interaction in event networks. Corvinus Journal of Sociology and Social Policy, (1), 3-32.
+Lerner, Jurgen, Bussmann, Margit, Snijders, Tom. A., & Brandes, Ulrik. 2013. Modeling frequency and type of interaction in event networks. Corvinus Journal of Sociology and Social Policy, (1), 3-32.
+
+Brandenberger, Laurence. 2018. Trading Favors - Examining the Temporal Dynamics of Reciprocity in Congressional Collaborations Using Relational Event Models. Social Networks, 54: 238-253.
+
+Malang, Thomas, Laurence Brandeberger and Philip Leifeld. 2018. Networks and Social Influence in European Legislative Politics. British Journal of Political Science. DOI: 10.1017/S0007123417000217.
 }
 

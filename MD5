@@ -1,7 +1,7 @@
-3a41f6889953387c82f4afa9ee427520 *DESCRIPTION
+e4ca340125fe2fcc1ce069c0ef7f26b0 *DESCRIPTION
 5110bba7c805aa73190e54ad2ba5bb08 *NAMESPACE
 2e8eb097a429a331d8892c20d8ce3fb7 *R/RcppExports.R
-f0765783f7f52f49c7072af83a8b9555 *R/rem.R
+07cad82af6a382aecf2e1f59d53d9b91 *R/rem.R
 27af539b51d99abbaaa18059dd89c357 *R/temp.R
 3b74b288033e6e7c92cf7b781f4f7dfb *inst/CITATION
 1702c1ab7b8eb0a19b9b9688b6cefc9d *man/createRemDataset.Rd
@@ -10,7 +10,7 @@ e585eb16f927d5134bdce4aee5b2fc72 *man/eventSequence.Rd
 7894c988db22bd6f7cc02caba4564734 *man/fourCycleStat.Rd
 5283f71f5a8c286637570b6c0350c673 *man/inertiaStat.Rd
 b9897baf162e292e289cbd6a54d248c0 *man/reciprocityStat.Rd
-ec8fdbb2b4bc90e36f31933898c82173 *man/rem-package.Rd
+d94914575cb2439d0f0e91b5cc253f3d *man/rem-package.Rd
 0eff325a5d6647bacf1ffc4d9ae5b0a4 *man/similarityStat.Rd
 00ecc089fa86292faa3ef7e2c8a07db6 *man/timeToEvent.Rd
 0b1aed5d1d54da806e018b2daba2cbec *man/triadStat.Rd
