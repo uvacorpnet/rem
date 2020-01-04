@@ -48,7 +48,7 @@ double sixCycleCpp(
   // transform to graph
   G.loadFromSourceTarget(sender, target, i); 
   
-  // find 4-cycles
+  // find 6-cycles
   cycles = G.sixCycles(currentSender, currentTarget); 
 
   // store times
