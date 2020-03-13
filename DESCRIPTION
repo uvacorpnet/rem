@@ -15,3 +15,4 @@ NeedsCompilation: yes
 Packaged: 2018-10-25 08:28:46 UTC; lenzibrandenberger
 Repository: CRAN
 Date/Publication: 2018-10-25 13:10:24 UTC
+RoxygenNote: 6.1.1

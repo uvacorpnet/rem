@@ -17,37 +17,37 @@ double sixCycleCpp(
   std::string currentSender,
   std::vector<std::string> target,
   std::string currentTarget,
-//  std::vector<std::string> typevar,
-//  std::string currentType,
+  std::vector<std::string> typevar,
+  std::string currentType,
   NumericVector time,
   double currentTime,
-//  NumericVector weightvar,
+  NumericVector weightvar,
   double xlog,
-//  std::vector<std::string> attrvarAaj,
-//  std::string attrAaj, 
-//  std::vector<std::string> attrvarBib,
-//  std::string attrBib,
-//  std::vector<std::string> attrvarCij,
-//  std::string attrCij, 
-//  std::string sixCycleType, 
-//  std::vector<std::string> w, //what else has a said?
-//  std::vector<std::string> x, //who else has used a (same opinion = positive, opposite oppingion = negative)
-  int i) { //,
-//  int begin) {
+  std::vector<std::string> attrvarAaj,
+  std::string attrAaj, 
+  std::vector<std::string> attrvarBib,
+  std::string attrBib,
+  std::vector<std::string> attrvarCij,
+  std::string attrCij, 
+  std::string fourCycleType, 
+  std::vector<std::string> w, //what else has a said?
+  std::vector<std::string> x, //who else has used a (same opinion = positive, opposite oppingion = negative)
+  int i, 
+  int begin) {
   
   double result;
   
   // TODO: assert that type is standard (currently, cycle type is ignored)
-  
-  vector< vector<nodeidtype> > cycles;
+
+  vector< vector<nodeidtype> >  cycles;
   map<pair<nodeidtype,nodeidtype>, double> timeOf;    
   pair<nodeidtype, nodeidtype> temp;
-  Graph G(i+1);
+  Graph G;
   double finalresult = 0;
-    
+
   // transform to graph
   G.loadFromSourceTarget(sender, target, i); 
-  
+
   // find 6-cycles
   cycles = G.sixCycles(currentSender, currentTarget); 
 
@@ -60,7 +60,7 @@ double sixCycleCpp(
     temp.second = sender[X];          
     timeOf[temp] = time[X]; 
   } // for 
-  
+
   // process results
   double cycleresult;
   for(int X=0; X<(signed)cycles.size(); X++) {
@@ -69,7 +69,7 @@ double sixCycleCpp(
       if(Y > 0) {
          temp.first = cycles[X][Y-1]; 
          temp.second = cycles[X][Y];
-         double weight = 1;  // TODO: use real weights and check attribute value match
+         double weight = 1;  // TODO: use real weights and check type/attribute value match
          double thisresult = 0;
          if(timeOf[temp] < currentTime)
            thisresult = std::abs(weight) * exp( - ( currentTime - timeOf[temp] ) * xlog)  * xlog;

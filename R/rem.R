@@ -1819,6 +1819,438 @@ degreeStat <- function(data, time, degreevar, halflife, weight = NULL,
   } #closes if-eventtypevar != NULL
 }
 
+################################################################################
+##	sixCycle calculation; adopted from fourCycleStat
+################################################################################
+
+sixCycleStat <- function(data, time, sender, target, halflife, weight = NULL,
+                          eventtypevar = NULL, eventtypevalue = 'standard', 
+                          eventfiltervar = NULL, 
+                          eventfilterAB = NULL, eventfilterAJ = NULL, 
+                          eventfilterIB = NULL, eventfilterIJ = NULL, 
+                          eventvar = NULL,
+                          variablename = 'sixCycle', returnData = FALSE, 
+                          dataPastEvents = NULL,
+                          showprogressbar = FALSE, 
+                          inParallel = FALSE, cluster = NULL){
+  
+  ####### check inputs
+  ## check if sender input is available
+  if ( is.null(sender) ) {
+    stop("No 'sender' argument was provided.")
+  }else{
+    sender <- as.character(sender)
+  }
+  
+  ## check if target input is available
+  if ( is.null(target) ) {
+    stop("No 'target' argument was provided.")
+  }else{
+    target <- as.character(target)
+  }	
+  
+  ## check if event.sequence is well defined (numeric and ever-increasing)
+  if ( is.null(time) ) {
+    stop("No 'time' argument was provided.")
+  }else{
+    #test if weight-var is in ascending order
+    if ( is.unsorted(time) ) {
+      stop("'", time, "' is not sorted. Sort data frame according to the event sequence.")
+    }
+  }
+  
+  ## check if all variables are of same length
+  if( length(sender) != length(target) ){
+    stop("'sender' and 'target' are not of same length.")
+  }
+  if ( length(sender) != length(time) ){
+    stop("'sender' and 'time' are not of same length.")
+  }
+  
+  ## check if weight-var is defined (if not -> create it)
+  if ( is.null(weight) ) {
+    weight <- rep(1, length(time))
+  }
+  if ( !is.numeric(weight) ) {
+    stop("'", as.name(weight), "' variable is not numeric.") #TODO: deparse(substitute(eventattributevar)) ?
+  }
+  
+  if (!(eventtypevalue == "standard"))
+  	stop("sixCycles are only implemented for standard events")
+  
+  ## check if event-type inputs are available and correctly specified
+  if ( !is.null(eventtypevar) ) {
+    # length test
+    if ( length(sender) != length(eventtypevar) ){
+      stop("'sender' and 'eventtypevar' are not of same length.")
+    }
+    # transform variable
+    eventtypevar <- as.character(eventtypevar)
+    if ( length(unique(eventtypevar)) != 2 ){ 
+      stop("'eventtypevar' is not a dummy variable.")
+    }
+    if ( is.null(eventtypevalue) ){
+      stop("No 'eventtypevalue' provided. Use default 'standard', or 'positive' or 'negative' to determine the overall type of the six-cycle effect.", )
+    }
+    if ( eventtypevalue == "standard" | eventtypevalue == "positive" | eventtypevalue == "negative"){}else{
+      stop("'eventtypevalue' not specified correctly. Use default 'standard', or 'positive' or 'negative' to determine the overall type of the six-cycle effect.", )
+    }	
+  }else{
+    eventtypevalue <- "standard"
+  }
+
+  ## check if event-attribute inputs are available and correctly specified
+  if ( is.null(eventfiltervar) == FALSE ) {
+    # length test
+    if ( length(sender) != length(eventfiltervar) ){
+      stop("'sender' and 'eventfiltervar' are not of same length.")
+    }
+    # transform variable
+    eventfiltervar <- as.character(eventfiltervar)
+    if ( is.null(eventfilterAB) & is.null(eventfilterAJ) & is.null(eventfilterIB) & is.null(eventfilterIJ) ){
+      stop("No 'eventattribute__' provided. Provide a string value by which the events are filtered.", )
+    }
+    # check if eventattributevalue is part of the variable
+    if ( is.null(eventfilterAB) == FALSE){
+      if ( length(grep(eventfilterAB, eventfiltervar)) == 0 ) {
+        ##TODO: #deparse(substitute(eventtypevar))
+        stop("Value '", eventfilterAB, "' is not an element of '", deparse(substitute(eventfiltervar)) , "'.") 
+      }
+    }
+    if ( is.null(eventfilterAJ) == FALSE){
+      if ( length(grep(eventfilterAJ, eventfiltervar)) == 0 ) {
+        ##TODO: #deparse(substitute(eventtypevar))
+        stop("Value '", eventfilterAJ, "' is not an element of '", deparse(substitute(eventfiltervar)) , "'.") 
+      }
+    }
+    if ( is.null(eventfilterIB) == FALSE){
+      if ( length(grep(eventfilterIB, eventfiltervar)) == 0 ) {
+        ##TODO: #deparse(substitute(eventtypevar))
+        stop("Value '", eventfilterIB, "' is not an element of '", deparse(substitute(eventfiltervar)) , "'.") 
+      }
+    }
+    if ( is.null(eventfilterIJ) == FALSE){
+      if ( length(grep(eventfilterIJ, eventfiltervar)) == 0 ) {
+        ##TODO: #deparse(substitute(eventtypevar))
+        stop("Value '", eventfilterIJ, "' is not an element of '", deparse(substitute(eventfiltervar)) , "'.") 
+      }
+    }
+  }
+  
+  ## check event-var
+  if(is.null(eventvar) == FALSE){
+    if(length(unique(eventvar)) == 2){
+      if( ( sort(unique(eventvar))[1] == 0 & sort(unique(eventvar))[2] == 1  ) == FALSE){
+        stop('eventvar has to be a dummy variable with values 0 for non-events and
+             1 for true events.')
+      }
+    }else{
+      stop('eventvar has to be a dummy variable with values 0 for non-events and
+             1 for true events.')
+    }
+  }
+  
+  ## cannot take parallel and progress bar
+  if(isTRUE(inParallel) & isTRUE(showprogressbar)){
+    stop('Cannot spit out progress of the function whilst running the 
+         loop in parallel. Turn showprogressbar to FALSE.')
+  }
+  
+  ## cannot have parallel without cluster
+  if(isTRUE(inParallel) & is.null(cluster)){
+    stop('By choosing to run the loop in parallel, you need to define a 
+         cluster. For instance: makeCluster(12, type="FORK"). Alternatively, 
+         hand over the number of nodes you would like to run the function on.')
+  }
+  
+  ## check if variablename makes sense (no " " etc.)
+  variablename <- gsub(" ", "", variablename, fixed = TRUE)
+  
+  ## create simple data set to be returned for degree calcuations with more than 1 output-variable
+  ##TODO: should there be an event-id-variable?? => that would be useful here
+  data.short <- data.frame(time)
+  ## 
+  result <- rep(NA, length(sender))
+  
+  ## calculate part of decay function
+  xlog <- log(2)/halflife 
+  
+  ## prepare the data set
+  if(is.null(dataPastEvents)){
+    ## prepare the data set
+    if(is.null(eventvar)){
+      senderLoop <- sender
+      targetLoop <- target
+      weightLoop <- weight
+      timeLoop <- time
+      if(is.null(eventtypevar)){
+        eventtypevar <- rep("1", length(sender)) # if not given, define at as 1 for each event
+        eventtypevarLoop <- rep("1", length(sender))
+        eventtypevalueLoop <- 'standard'
+      }else{
+        eventtypevarLoop <- eventtypevar
+        eventtypevalueLoop <- eventtypevalue
+      }
+      if(is.null(eventfilterAB)){
+        eventfiltervarABLoop <- rep("1", length(sender))
+        eventfilterABLoop <- "1"
+      }else{
+        eventfiltervarABLoop <- eventfiltervar
+        eventfilterABLoop <- eventfilterAB
+      }
+      if(is.null(eventfilterAJ)){
+        eventfiltervarAJLoop <- rep("1", length(sender))
+        eventfilterAJLoop <- "1"
+      }else{
+        eventfiltervarAJLoop <- eventfiltervar
+        eventfilterAJLoop <- eventfilterAJ
+      }
+      if(is.null(eventfilterIB)){
+        eventfiltervarIBLoop <- rep("1", length(sender))
+        eventfilterIBLoop <- "1"
+      }else{
+        eventfiltervarIBLoop <- eventfiltervar
+        eventfilterIBLoop <- eventfilterIB
+      }
+      if(is.null(eventfilterIJ)){
+        eventfiltervarIJLoop <- rep("1", length(sender))
+        eventfilterIJLoop <- "1"
+      }else{
+        eventfiltervarIJLoop <- eventfiltervar
+        eventfilterIJLoop <- eventfilterIJ
+      }
+    }else{ # counting process data is used
+      senderLoop <- sender[eventvar == 1]
+      targetLoop <- target[eventvar == 1]
+      weightLoop <- weight[eventvar == 1]
+      timeLoop <- time[eventvar == 1]
+      if(is.null(eventtypevar)){
+        eventtypevar <- rep("1", length(sender))
+        eventtypevarLoop <- rep("1", length(senderLoop))
+        eventtypevalueLoop <- 'standard'
+      }else{
+        eventtypevarLoop <- eventtypevar[eventvar == 1]
+        eventtypevalueLoop <- eventtypevalue
+      }
+      if(is.null(eventfilterAB)){
+        eventfiltervarABLoop <- rep("1", length(sender)) # same length als sender
+        eventfilterABLoop <- "1"
+      }else{
+        eventfiltervarABLoop <- eventfiltervar # same length as sender
+        eventfilterABLoop <- eventfilterAB
+      }
+      if(is.null(eventfilterAJ)){
+        eventfiltervarAJLoop <- rep("1", length(senderLoop))
+        eventfilterAJLoop <- "1"
+      }else{
+        eventfiltervarAJLoop <- eventfiltervar[eventvar == 1]
+        eventfilterAJLoop <- eventfilterAJ
+      }
+      if(is.null(eventfilterIB)){
+        eventfiltervarIBLoop <- rep("1", length(senderLoop))
+        eventfilterIBLoop <- "1"
+      }else{
+        eventfiltervarIBLoop <- eventfiltervar[eventvar == 1]
+        eventfilterIBLoop <- eventfilterIB
+      }
+      if(is.null(eventfilterIJ)){
+        eventfiltervarIJLoop <- rep("1", length(senderLoop))
+        eventfilterIJLoop <- "1"
+      }else{
+        eventfiltervarIJLoop <- eventfiltervar[eventvar == 1]
+        eventfilterIJLoop <- eventfilterIJ
+      }
+    }
+  }else{ #dataPastEvents is defined: 
+    ## prepare the data set
+    senderLoop <- dataPastEvents[,2]
+    targetLoop <- dataPastEvents[,3]
+    weightLoop <- dataPastEvents[,4]
+    timeLoop <- dataPastEvents[,1]
+    if(is.null(eventtypevar)){
+      eventtypevar <- rep("1", length(sender)) # if not given, define at as 1 for each event
+      eventtypevarLoop <- rep("1", nrow(dataPastEvents))
+      eventtypevalueLoop <- 'standard'
+    }else{
+      eventtypevarLoop <- dataPastEvents[,5]
+      eventtypevalueLoop <- eventtypevalue
+    }
+    if(is.null(eventfilterAB)){
+      eventfiltervarABLoop <- rep("1", length(sender)) # not dataPastEvents, bc AB is used in the i-loop (outero loop)
+      eventfilterABLoop <- "1"
+    }else{
+	  #TODO: fix this: print('Cannot provide dataPastEvents and specifiy AB filter. Will be fixed in future version.')
+      eventfiltervarABLoop <- rep("1", length(sender)) #dataPastEvents[,6]
+      eventfilterABLoop <- "1" #eventfilterAB
+    }
+    if(is.null(eventfilterAJ)){
+      eventfiltervarAJLoop <- rep("1", nrow(dataPastEvents))
+      eventfilterAJLoop <- "1"
+    }else{
+      eventfiltervarAJLoop <- dataPastEvents[,6]
+      eventfilterAJLoop <- eventfilterAJ
+    }
+    if(is.null(eventfilterIB)){
+      eventfiltervarIBLoop <- rep("1", nrow(dataPastEvents))
+      eventfilterIBLoop <- "1"
+    }else{
+      eventfiltervarIBLoop <- dataPastEvents[,6]
+      eventfilterIBLoop <- eventfilterIB
+    }
+    if(is.null(eventfilterIJ)){
+      eventfiltervarIJLoop <- rep("1", nrow(dataPastEvents))
+      eventfilterIJLoop <- "1"
+    }else{
+      eventfiltervarIJLoop <- dataPastEvents[,6]
+      eventfilterIJLoop <- eventfilterIJ
+    }
+  }
+  
+  ## calculate the sixCycle effects for each event
+  ##
+  if(isTRUE(inParallel)){
+    
+    ##
+    doParallel::registerDoParallel(cluster)
+    
+    ##
+    res <- foreach::foreach(i=1:length(sender), .combine=rbind)%dopar%{
+      
+      ## check if eventfilterAB is TRUE
+      if(eventfiltervarABLoop[i] == eventfilterABLoop){
+        
+        ## get list of what a said in the past
+        ## TODO: add timeLoop > beginTime => when you set the nr of events you can iterate back over, you have to incorporate this in these filter-functions:
+        w <- targetLoop[senderLoop == sender[i] & 
+                          targetLoop != target[i] &  
+                          timeLoop < time[i] &
+                          eventfiltervarAJLoop == eventfilterAJLoop]
+        w <- unique(w)
+        
+        ## get list of who else said b in the past
+        ## TODO: add timeLoop > beginTime => when you set the nr of events you can iterate back over, you have to incorporate this in these filter-functions:
+        if(eventtypevalue == 'standard'){
+          x <- senderLoop[targetLoop == target[i] & 
+                            senderLoop != sender[i] & 
+                            timeLoop < time[i] & 
+                            eventfiltervarIBLoop == eventfilterIBLoop]
+        }
+        x <- unique(x)
+        
+        ## 
+        if(length(x) == 0 | length(w) == 0){
+          result <- 0
+        }else{
+          # find i in reduced data set
+          iLoop <- length(timeLoop[timeLoop < time[i]]) #+ 1 - 1 # + 1 bc in the loop it's <; however cpp starts at 0, so -1
+          
+          ## cpp-loop
+          result <- sixCycleCpp(senderLoop, sender[i], targetLoop, target[i], 
+                                 eventtypevarLoop, eventtypevar[i], timeLoop, time[i], 
+                                 weightLoop, xlog, eventfiltervarAJLoop, 
+                                 eventfilterAJLoop, eventfiltervarIBLoop, 
+                                 eventfilterIBLoop, eventfiltervarIJLoop, 
+                                 eventfilterIJLoop, eventtypevalueLoop, 
+                                 w, x, iLoop, 0) #hardcode begin-optin in sixCycle to 0 => TODO: implement begin
+          
+        }
+      }else{ # if eventfilterAB[i] != eventfilterAB
+        result <- 0
+      }
+      
+      ## rbind the variable:
+      result
+    } #closes i-loop
+    
+    ## transform result variable
+    result <- as.numeric(as.character(res))
+    
+  }else{ # run loop without parallelization
+    
+    ## 
+    if(isTRUE(showprogressbar)){
+      pb <- txtProgressBar(min = 1, max = length(sender), style = 3)
+    }
+    for(i in 1:length(sender)){
+      if(isTRUE(showprogressbar)){
+        setTxtProgressBar(pb, i)
+      }
+      
+      ## check if eventfilterAB is TRUE
+      if(eventfiltervarABLoop[i] == eventfilterABLoop){
+        
+        ## get list of what a said in the past
+        ## TODO: add timeLoop > beginTime => when you set the nr of events you can iterate back over, you have to incorporate this in these filter-functions:
+        w <- targetLoop[senderLoop == sender[i] & 
+                          targetLoop != target[i] & 
+                          timeLoop < time[i] & 
+                          eventfiltervarAJLoop == eventfilterAJLoop]
+        w <- unique(w)
+        
+        ## get list of who else said b in the past
+        ## TODO: add timeLoop > beginTime => when you set the nr of events you can iterate back over, you have to incorporate this in these filter-functions:
+        if(eventtypevalue == 'standard'){
+          x <- senderLoop[targetLoop == target[i] & 
+                            senderLoop != sender[i] & 
+                            timeLoop < time[i] & 
+                            eventfiltervarIBLoop == eventfilterIBLoop]
+        }else if(eventtypevalue == 'positive'){
+          x <- senderLoop[targetLoop == target[i] & 
+                            senderLoop != sender[i] & 
+                            timeLoop < time[i] & 
+                            eventfiltervarIBLoop == eventfilterIBLoop & 
+                            eventtypevarLoop == eventtypevar[i]]
+        }else if(eventtypevalue == 'negative'){
+          x <- senderLoop[targetLoop == target[i] & 
+                            senderLoop != sender[i] & 
+                            timeLoop < time[i] & 
+                            eventfiltervarIBLoop == eventfilterIBLoop & 
+                            eventtypevarLoop != eventtypevar[i]]
+        }
+        x <- unique(x)
+
+        ## 
+        if(length(x) == 0 | length(w) == 0){
+          result[i] <- 0
+        }else{
+          # find i in reduced data set
+          if(is.null(eventvar) & is.null(dataPastEvents)){
+            iLoop <- i-1 # bc cpp-loops start at 0 not 1
+          }else{
+            iLoop <- length(timeLoop[timeLoop < time[i]]) #+ 1 - 1 # + 1 bc in the loop it's <; however cpp starts at 0, so -1
+          }
+          
+          ## cpp-loop
+          result[i] <- sixCycleCpp(senderLoop, sender[i], targetLoop, target[i], 
+                                    eventtypevarLoop, eventtypevar[i], timeLoop, time[i], 
+                                    weightLoop, xlog, eventfiltervarAJLoop, 
+                                    eventfilterAJLoop,eventfiltervarIBLoop, 
+                                    eventfilterIBLoop,eventfiltervarIJLoop, 
+                                    eventfilterIJLoop, eventtypevalueLoop, 
+                                    w, x, iLoop, 0) #hardcode begin-optin in sixCycle to 0 => TODO: implement begin
+          
+        }
+      }else{ # if eventfilterAB[i] != eventfilterAB
+        result[i] <- 0
+      }
+    }# closes i-loop
+  } # closes if no parallel
+  
+  ## return results
+  ## if returnData = TRUE => return the entire data frame as well as the 1 additional inertia-variable
+  if ( returnData == TRUE ) {
+    ##TODO: not simply add new variable - but check if a variable with this name already exists and replace it?
+    data <- cbind(data, result)
+    names(data)[length(data)] <- variablename
+    ## return the data frame with the variable bound to it
+    return(data)
+  }else{ 
+    ## only return the 1 inertia variable that was generated
+    return(result)
+  }
+  
+} # closing sixCycle
+
 
 ################################################################################
 ##	FourCycle calculation

@@ -4,9 +4,11 @@ This repository provides code for adding Six-Cycles to the [CRAN rem](https://gi
 
 ## Credits
 
-If you find this code useful, please consider citing the following paper:
+If you find this code to compute Six-Cycles useful, please consider citing the following paper:
 
-  > D. Valeeva, F.W. Takes and E.M. Heemskerk. The duality of firms and directors in board interlock networks: A relational event modeling approach. Under review, 2019.
+  > D. Valeeva, F.W. Takes and E.M. Heemskerk. The duality of firms and directors in board interlock networks: A relational event modeling approach. Social Networks 62: 68-79, Elsevier, 2020. doi: 10.1016/j.socnet.2020.02.009
+
+Recall that this package is an extension of the [rem](https://github.com/cran/rem) package, for which credit goes to the original authors of this package.
 
 ## Disclaimer
 
