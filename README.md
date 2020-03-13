@@ -1,6 +1,6 @@
 # Relational Event Models (REM) - Six-Cycles
 
-This repository provides code for adding Six-Cycles to the [CRAN rem](https://github.com/cran/rem) package for Relational Event Models (REM) as provided by the CRAN rem package.
+This repository provides code for adding Six-Cycles to the [CRAN rem](https://github.com/cran/rem) package for Relational Event Models (REM).
 
 ## Credits
 
